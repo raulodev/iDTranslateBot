@@ -163,7 +163,7 @@ def SUPPORTED_LANG_AD (Update,context):
 
 if __name__ == "__main__":
 	
-	updater=Updater(token=os.environ [TOKEN])
+	updater=Updater(token=os.environ ['TOKEN'])
 	
 	update=updater
 	
