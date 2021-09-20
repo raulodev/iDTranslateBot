@@ -1,389 +1,168 @@
-from telegram.ext import Updater , CommandHandler , MessageHandler , Filters , CallbackQueryHandler , InlineQueryHandler
+from telegram.ext import ( Updater , CommandHandler , MessageHandler , 
+						Filters , CallbackQueryHandler , InlineQueryHandler )
 
 
-from telegram import InlineKeyboardMarkup ,InlineKeyboardButton ,InlineQueryResultArticle , InputTextMessageContent
-
-import telegram
-
-from random import choice
-
-import textblob
-
-import os
+from telegram import (InlineKeyboardMarkup ,InlineKeyboardButton ,
+					InlineQueryResultArticle , InputTextMessageContent )
 
 
-def start(Update,context):
+from deep_translator import GoogleTranslator
+
+
+
+def Traductor(text , target):
+		
+	traductor = GoogleTranslator(source='auto', target=target)
 	
-	name=Update.effective_user.first_name
+	resultado = traductor.translate(text)
 	
-	boton=InlineKeyboardButton(
-		text="Translate inline",
-		callback_data="call_inline")
+	return resultado	
+		
+
+
+def start (Update,context):
 	
-	text=f"<b>👋Halo {name}\n\n📝Write what you want to translate.\n\n👇Or try using our inline mode.</b>"
+	user_id = Update.effective_user.id
+	
+	user_lang= Update.effective_user.language_code		
+	
+	name=Update.effective_user.first_name	
+
+	text=f"<b>👋Halo {name} escribe y yo traduciré a tu idioma.</b>"
 	
 	Update.message.reply_text(
 		text=text,
-		parse_mode="html",
-		reply_markup=
-		InlineKeyboardMarkup([
-		[boton]]))
-
-
-
-def messagehandler(Update,context):
+		parse_mode="html")
 		
+			
+	context.bot.set_my_commands(
+			commands=([
+				
+				['start','Inicie el bot'],
+				['tr' , 'Responde a un mensaje en grupos y traduce'],
+				['/supported_lang' , 'lenguajes soportados al privado']
+				
+				])
+			)
+	
+		
+
+def TRANSLATE_PV (Update,context):
 	
 	try :
-		chat_id = Update.message.chat.id
-		text=Update.message.text
-		
-		if chat_id > 0:
 			
-			try:
-				
-				lang= Update.effective_user.language_code
-				
-				blob = textblob.TextBlob(text)
-				
-				text_transl = str(blob.translate(to=lang))
-				
-				Update.message.reply_text(f"<b>❤ Done!\n\n</b><code>{text_transl}</code>",
-				parse_mode="html")
-				
-				
-			except Exception:
-
-				context.user_data['text']=text
-				
-				boton1= InlineKeyboardButton(text=
-				"🇪🇸Español" ,callback_data="es")
-							
-				boton2= InlineKeyboardButton(text=
-				"🇬🇧English" ,callback_data="en")
-								
-				boton3= InlineKeyboardButton(text=
-				"🇷🇺русский" ,callback_data="ru")	
-				
-				boton4= InlineKeyboardButton(text=
-				"🇮🇹 Italiano" ,callback_data="it")
-				
-				boton5= InlineKeyboardButton(text=
-				"🇰🇷한국어" ,callback_data="ko")		
-						
-				boton6= InlineKeyboardButton(text=
-				"🇮🇳भारतीय" ,callback_data="hi")					
-				
-				emojis = ["😁","😆","🙃","🙂"]
-				
-				emoji=choice(emojis)
-				
-				
-				Update.message.reply_text(text=
-				f"<b>{emoji}Choose the language you want to translate to.</b>",
-				parse_mode="html",
-				reply_markup=
-				InlineKeyboardMarkup([
-				[boton1 , boton2],
-				[boton3 , boton4],
-				[boton5 , boton6]
-				]))
+		text = Update.message.text
 		
-
-		elif chat_id < 0 and text == "/tr":
-			try:
-				
-				lang= Update.effective_user.language_code
-				
-				text=Update.message.reply_to_message.text
-				
-				message_id=Update.message.reply_to_message.message_id
-				
-				t = Update.message.text				
-				
-				blob = textblob.TextBlob(text)
-				try:
-					text_transl = str(blob.translate(to=lang))
-					
-					context.bot.send_message(chat_id=chat_id,
-			 text=
-			 f"<b>Translation:</b>\n\n--> <code>{text_transl}</code>",parse_mode="html",
-				reply_to_message_id=message_id)
-				
-					username=Update.effective_user.username
-					
-				
-				except Exception:
-					
-					context.bot.send_message(chat_id=chat_id,
-			 text=
-			 f"<b>Translation:</b>\n\n--> <code>{text}</code>",parse_mode="html",
-				reply_to_message_id=message_id)		
-					username=Update.effective_user.username
-					
-
+		user_lang = Update.effective_user.language_code
+		
+		translate = Traductor(text,user_lang)
+		
+		bt = InlineKeyboardButton(
+			text='🏳‍🌈 Otro Idioma',
+			callback_data='cambiar_traduccion')
 			
-			except AttributeError:
-				
-				answer="......?"
-				if lang!="en":
-					blob = textblob.TextBlob(answer)				
-					answer = str(blob.translate(to=lang))
-					
-				Update.message.reply_text(answer)
-	
-	
-	except Exception :
+		Update.message.reply_text(
+			text=f"<b>❤Hecho</b>\n\n<code>{translate}</code>",
+			parse_mode='html',
+			reply_markup=InlineKeyboardMarkup([[bt]]))			
+			
+																		
+	except :
+		
 		pass
 
 
-def callbackhandler(Update,context):
+def CALLBACK_HANDLER (Update,context):
 	
-	query=Update.callback_query
-	chat_id=Update.effective_user.id
+	query = Update.callback_query
 	
 	data = query.data
 	
-	if data != "call_inline":
-		
-		lang = data
-		
-		text=context.user_data.get("text","not found") 
-	
-		
-		
-		blob = textblob.TextBlob(text)
-		
-		
-		try:
-			
-			t = str(blob.translate(to=lang))
-			
-			
-			context.bot.send_message(chat_id=chat_id,text=f"<b>❤ Done!</b>\n\n<code>{t}</code>",parse_mode="html")
-
-		
-		
-		except Exception as error:
-			
-			context.bot.send_message(chat_id=chat_id,text=f"<b>❤ Done!</b>\n\n<code>{text}</code>",parse_mode="html")
-	
-	
-	
-	elif data == "call_inline":
-			
-		boton1=InlineKeyboardButton(text=
-		"🇪🇸Español" ,switch_inline_query="es Hi")
-		
-		boton2=InlineKeyboardButton(text=
-		"🇬🇧English" ,switch_inline_query="en Hola")
+	if data == 'cambiar_traduccion' :
 					
-		boton3=InlineKeyboardButton(text=
-		"🇷🇺русский" ,switch_inline_query="ru Hi")	
-		
-		boton4=InlineKeyboardButton(text=
-		"🇮🇹Italiano" ,switch_inline_query="it Hi")
-		
-		boton5=InlineKeyboardButton(text=
-		"🇰🇷한국어" ,switch_inline_query="ko Hi")		
-				
-		boton6=InlineKeyboardButton(text=
-		"🇮🇳भारतीय" ,switch_inline_query="hi Hi")					
-		
-		emojis = ["😁","😆","🙃","🙂"]
-		
-		emoji=choice(emojis)		
+		b2 = InlineKeyboardButton(text='🇪🇸Español',callback_data='es')
 			
-		query=Update.callback_query
+		b3 = InlineKeyboardButton(text='🇬🇧Inglés',callback_data='en')
+				
+		b4 = InlineKeyboardButton(text='🇮🇳Indú',callback_data='hi')
+					
+		b5 = InlineKeyboardButton(text='🇸🇦Árabe',callback_data='ar')						
+					
+		b6 = InlineKeyboardButton(text='🇵🇹Portugués',callback_data='pt')
+											
+		b7 = InlineKeyboardButton(text='🇷🇺Ruso',callback_data='ru')
+											
+		b8 = InlineKeyboardButton(text='🇫🇷Francés',callback_data='fr')						
+					
 		
+		query.edit_message_reply_markup(
+			reply_markup=InlineKeyboardMarkup([
+			[b2],[b3,b4],[b5,b6],[b7,b8]
+			]))
+
+	else :
 		
+		text=query.message.text[8:]
+		lang = query.data
 		
+		translate = Traductor(text,lang)
 		
 		query.edit_message_text(
-		text=f"<b>{emoji}Choose the language you want to translate to.</b>",
-		parse_mode="html",
-		reply_markup=
-		InlineKeyboardMarkup([
-		[boton1 , boton2],
-		[boton3 , boton4],
-		[boton5 , boton6]
-		]))
-
+			text=f'<b>❤Hecho</b>\n\n<code>{translate}</code>',
+			parse_mode='html')
 		
 
-def mode_inline(Update,context):
-	
-	query_id=Update.inline_query.id	
-	query=Update.inline_query.query
-	
-	
-	
-
-	text_inline=query
-	
-	if text_inline == "" :
-		
-		lang = Update.effective_user.language_code
-		
-		text = "<code>How to use inline mode❔</code>\n\nTo use the bot in inline mode you must first write the <b>language code</b> and then the <b>text</b>\n\nEg:\n→ <code>@iDTranslateBot en Hola</code>"
-		
-		if lang != "en":
+def TRANSLATE_GP (Update,context):
 			
-			blob = textblob.TextBlob(text)
-			
-			text = str(blob.translate(to=lang))		
-		
-		
-		results = []
-		
-			
-			
-		consulta = InlineQueryResultArticle(id=query_id,title= "How to use inline mode?",  input_message_content=InputTextMessageContent(text , parse_mode="html"),
-			description="Help" , thumb_url="https://yourlink.cc/miniatura-translatebot",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(text="👨‍💻Creator" , url="https://github.com/inDemocratic") ,InlineKeyboardButton(text="📣Channel", url="https://t.me/InDemocratic/120")],[InlineKeyboardButton(text="🤖Other Bots" , url="https://t.me/InDemocratic/37")]]))
-			
-		try :
-	
-			results.append(consulta)
-			
-			try:
-				context.bot.answer_inline_query(
-					Update.inline_query.id,
-					results=results , is_personal=True , switch_pm_text="Language code + Text" , switch_pm_parameter ="uno")
-					
-					
-					
-			except telegram.error.BadRequest:
-				pass
-		
-		except UnboundLocalError :
-			pass		
-	
-	
-	
-	
-	
-	else :		
-		
-		
-		lang = text_inline[:2]
-		text_inline=text_inline[3:]
-	
-		results=[]
-		
-		blob = textblob.TextBlob(text_inline)
-		
-		try :
-			
-			text = str(blob.translate(to=lang))
-			
-		except Exception:
-			text=text_inline		
-			
-			
-			
-		consulta = InlineQueryResultArticle(id=query_id,title= lang,  input_message_content=InputTextMessageContent(text),
-			description=text , thumb_url="https://yourlink.cc/miniatura-translatebot")
-			
-		try :
-	
-			results.append(consulta)
-			
-			try:
-				context.bot.answer_inline_query(
-					Update.inline_query.id,
-					results=results ,  is_personal=True    ,switch_pm_text="Language code + Text" , switch_pm_parameter ="uno")
-					
-					
-			except telegram.error.BadRequest:
-				pass
-		
-		except UnboundLocalError :
-			pass
-
-
-
-
-
-def langcode(Update,context):
-	
-	
-	text ="""ar:árabe
-	bg:búlgaro
-	ca:catalán
-	cs:checo
-	da:danés
-	de:alemán
-	el:griego
-	en:inglés
-	es:español
-	et:estonio
-	fi:finés
-	fr:francés
-	zh:chino
-	vi:vietnamita
-	uk:ucranio
-	tr:turco
-	th:tailandés
-	sv:sueco
-	sr:serbio
-	ru:ruso
-	ro:rumano
-	pt:portugués
-	pl:polaco
-	no:noruego
-	nl:neerlandés
-	ms:malayo
-	mk:macedonio
-	lv:letón
-	lt:lituano
-	ko:coreano
-	ja:japonés
-	iw:hebreo
-	it:italiano
-	is:islandés
-	in:indonesio
-	hr:croata
-	hu:húngaro
-	hi:hindú
-	ga:irlandés
-	be:bielorruso"""	
-	
-	l = text.splitlines()
-	
-	lista =[]
-	n=0
-	for i in l:
-		i = i.replace('\t' , "")		
-		
-		if n % 2 == 0:
-			li = len(i)
-			lista.append(f'{i}')
-			
-		elif n % 2 == 1 :
-			if li != None:
-				x = 14 - li
+	if (Update.message.reply_to_message):
 				
-				es=[]
-				for xw in range(x):
-					es.append(" ")
+		text=Update.message.reply_to_message.text
+		
+		user_lang = Update.effective_user.language_code
+		
+		message_id= Update.message.reply_to_message.message_id
 				
-				esp="".join(es)
-				lista.append(f"{esp}{i}\n")
+		translate = Traductor(text,user_lang)
+		
+		context.bot.send_message(			
+			chat_id=Update.effective_chat.id,			
+			text=f"<b>❤Hecho</b>\n\n<code>{translate}</code>",			
+			parse_mode='html',			
+			reply_to_message_id=message_id)
+	
+	
+def SUPPORTED_LANG (Update,context):
+
+	list = GoogleTranslator.get_supported_languages()
+	
+	langs=[]
+	
+	n = 0
+	
+	for i in list :
+		
+		if n % 2 == 1:			
 			
-			
+			langs.append(f'<code>{list[n-1]} -- {list[n]}</code>')
+		
 		n += 1
-		
-	l1="".join(lista)
-	
-	text = f"<b>📔Language Code</b>\n\n<code>{l1}</code>"
-	
-	Update.message.reply_text(text,"html")
 
+	supported_langs = "\n".join(langs)
+	
+	Update.message.reply_text(f'{supported_langs}','html')		
+					
+def TRANSLATE_AD (Update,context):
+	
+	Update.message.reply_text('<b>❤Usa este comando en grupos.</b>','html')
+
+def SUPPORTED_LANG_AD (Update,context):
+
+	Update.message.reply_text('<b>❤Usa este comando en privado.</b>','html')
 
 
 if __name__ == "__main__":
 	
-	updater=Updater(token=os.environ["TOKEN"])
+	updater=Updater(token="1945431702:AAH_jFIh9wQOPmeW8B_ABsyoYKGautRpeA0")
 	
 	update=updater
 	
@@ -391,15 +170,22 @@ if __name__ == "__main__":
 	
 	dp.add_handler(CommandHandler('start',start))
 	
-	dp.add_handler(CommandHandler("langcode",langcode))
+	dp.add_handler(CallbackQueryHandler(pattern=0,callback=CALLBACK_HANDLER))	
 	
-	dp.add_handler(CallbackQueryHandler(pattern=0,callback=callbackhandler))
+	dp.add_handler(MessageHandler(Filters.regex('^/tr$') & Filters.chat_type.groups , TRANSLATE_GP))
+		
+	dp.add_handler(MessageHandler(Filters.regex('^/supported_lang$') & Filters.chat_type.private , SUPPORTED_LANG))			
+		
+	dp.add_handler(MessageHandler(Filters.regex('^/tr$') & Filters.chat_type.private , TRANSLATE_AD))
+		
+	dp.add_handler(MessageHandler(Filters.regex('/supported_lang') & Filters.chat_type.groups , SUPPORTED_LANG_AD))			
+			
 	
-	dp.add_handler(InlineQueryHandler(mode_inline))	
 	
-	dp.add_handler(MessageHandler(Filters.text , messagehandler))
-	
+	dp.add_handler(MessageHandler(Filters.text & Filters.chat_type.private , TRANSLATE_PV))		
 	
 	updater.start_polling()
+	
 	print("bot Transalte is running")
+	
 	updater.idle()
